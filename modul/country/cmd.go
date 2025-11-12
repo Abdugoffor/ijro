@@ -1,7 +1,7 @@
-package category_cmd
+package country_cmd
 
 import (
-	category_handler "ijro-nazorat/modul/category/handler"
+	country_handler "ijro-nazorat/modul/country/handler"
 	"log"
 
 	"github.com/labstack/echo/v4"
@@ -11,6 +11,6 @@ import (
 func Cmd(route *echo.Echo, db *gorm.DB, log *log.Logger) {
 	routerGroup := route.Group("/admin")
 	{
-		category_handler.NewCategoryHandler(routerGroup, db, log)
+		country_handler.NewContryHandler(routerGroup, db, log)
 	}
 }

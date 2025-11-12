@@ -1,9 +1,9 @@
-package category_handler
+package country_handler
 
 import (
 	"fmt"
-	category_dto "ijro-nazorat/modul/category/dto"
-	category_service "ijro-nazorat/modul/category/service"
+	country_dto "ijro-nazorat/modul/country/dto"
+	country_service "ijro-nazorat/modul/country/service"
 	"log"
 	"net/http"
 	"strconv"
@@ -13,20 +13,20 @@ import (
 	"gorm.io/gorm"
 )
 
-type categoryHandler struct {
+type contryHandler struct {
 	db      *gorm.DB
 	log     *log.Logger
-	service category_service.CategoryService
+	service country_service.CountryService
 }
 
-func NewCategoryHandler(gorm *echo.Group, db *gorm.DB, log *log.Logger) categoryHandler {
-	handler := categoryHandler{
+func NewContryHandler(gorm *echo.Group, db *gorm.DB, log *log.Logger) contryHandler {
+	handler := contryHandler{
 		db:      db,
 		log:     log,
-		service: category_service.NewCategoryService(db),
+		service: country_service.NewCountryService(db),
 	}
 
-	routes := gorm.Group("/category")
+	routes := gorm.Group("/country")
 	{
 		routes.GET("", handler.All)
 		routes.GET("/:id", handler.Show)
@@ -40,8 +40,8 @@ func NewCategoryHandler(gorm *echo.Group, db *gorm.DB, log *log.Logger) category
 	return handler
 }
 
-func (handler *categoryHandler) All(ctx echo.Context) error {
-	var query category_dto.Filter
+func (handler *contryHandler) All(ctx echo.Context) error {
+	var query country_dto.Filter
 	{
 		if err := ctx.Bind(&query); err != nil {
 			return err
@@ -61,16 +61,16 @@ func (handler *categoryHandler) All(ctx echo.Context) error {
 
 		if query.Name != "" {
 			name := "%" + strings.ToLower(query.Name) + "%"
-			tx = tx.Where("LOWER(categories.name) LIKE ?", name)
+			tx = tx.Where("LOWER(countries.name) LIKE ?", name)
 		}
 
-		sortColumn := "categories.id ASC"
+		sortColumn := "countries.created_at ASC"
 
 		if query.Column != "" && query.Sort != "" {
-			sortColumn = fmt.Sprintf("categories.%s %s", query.Column, query.Sort)
+			sortColumn = fmt.Sprintf("countries.%s %s", query.Column, query.Sort)
 		}
 
-		tx = tx.Group("categories.id").Order(sortColumn)
+		tx = tx.Group("countries.id").Order(sortColumn)
 
 		return tx
 	}
@@ -85,9 +85,10 @@ func (handler *categoryHandler) All(ctx echo.Context) error {
 	return ctx.JSON(200, data)
 }
 
-func (handler *categoryHandler) Show(ctx echo.Context) error {
+func (handler *contryHandler) Show(ctx echo.Context) error {
 	idParam := ctx.Param("id")
-	parsedID, err := strconv.ParseUint(idParam, 10, 64)
+
+	parsedID, err := strconv.ParseInt(idParam, 10, 64)
 	{
 		if err != nil {
 			return ctx.JSON(http.StatusBadRequest, echo.Map{"error": "invalid id"})
@@ -95,7 +96,6 @@ func (handler *categoryHandler) Show(ctx echo.Context) error {
 	}
 
 	filter := func(tx *gorm.DB) *gorm.DB {
-
 		if parsedID > 0 {
 			tx = tx.Where("id = ?", parsedID)
 		}
@@ -112,8 +112,8 @@ func (handler *categoryHandler) Show(ctx echo.Context) error {
 	return ctx.JSON(200, data)
 }
 
-func (handler *categoryHandler) Create(ctx echo.Context) error {
-	var req category_dto.CreateOrUpdate
+func (handler *contryHandler) Create(ctx echo.Context) error {
+	var req country_dto.CreateOrUpdate
 	{
 		if err := ctx.Bind(&req); err != nil {
 			return ctx.JSON(http.StatusBadRequest, echo.Map{"error": err.Error()})
@@ -130,16 +130,17 @@ func (handler *categoryHandler) Create(ctx echo.Context) error {
 	return ctx.JSON(200, data)
 }
 
-func (handler *categoryHandler) Update(ctx echo.Context) error {
+func (handler *contryHandler) Update(ctx echo.Context) error {
 	idParam := ctx.Param("id")
-	parsedID, err := strconv.ParseUint(idParam, 10, 64)
+
+	parsedID, err := strconv.ParseInt(idParam, 10, 64)
 	{
 		if err != nil {
 			return ctx.JSON(http.StatusBadRequest, echo.Map{"error": "invalid id"})
 		}
 	}
 
-	var req category_dto.CreateOrUpdate
+	var req country_dto.CreateOrUpdate
 	{
 		if err := ctx.Bind(&req); err != nil {
 			return ctx.JSON(http.StatusBadRequest, echo.Map{"error": err.Error()})
@@ -147,7 +148,6 @@ func (handler *categoryHandler) Update(ctx echo.Context) error {
 	}
 
 	filter := func(tx *gorm.DB) *gorm.DB {
-
 		if parsedID > 0 {
 			tx = tx.Where("id = ?", parsedID)
 		}
@@ -164,9 +164,10 @@ func (handler *categoryHandler) Update(ctx echo.Context) error {
 	return ctx.JSON(200, data)
 }
 
-func (handler *categoryHandler) Delete(ctx echo.Context) error {
+func (handler *contryHandler) Delete(ctx echo.Context) error {
 	idParam := ctx.Param("id")
-	parsedID, err := strconv.ParseUint(idParam, 10, 64)
+
+	parsedID, err := strconv.ParseInt(idParam, 10, 64)
 	{
 		if err != nil {
 			return ctx.JSON(http.StatusBadRequest, echo.Map{"error": "invalid id"})
@@ -174,7 +175,6 @@ func (handler *categoryHandler) Delete(ctx echo.Context) error {
 	}
 
 	filter := func(tx *gorm.DB) *gorm.DB {
-
 		if parsedID > 0 {
 			tx = tx.Where("id = ?", parsedID)
 		}
@@ -191,9 +191,10 @@ func (handler *categoryHandler) Delete(ctx echo.Context) error {
 	return ctx.JSON(200, echo.Map{"message": "success delete data"})
 }
 
-func (handler *categoryHandler) Restore(ctx echo.Context) error {
+func (handler *contryHandler) Restore(ctx echo.Context) error {
 	idParam := ctx.Param("id")
-	parsedID, err := strconv.ParseUint(idParam, 10, 64)
+
+	parsedID, err := strconv.ParseInt(idParam, 10, 64)
 	{
 		if err != nil {
 			return ctx.JSON(http.StatusBadRequest, echo.Map{"error": "invalid id"})
@@ -201,7 +202,6 @@ func (handler *categoryHandler) Restore(ctx echo.Context) error {
 	}
 
 	filter := func(tx *gorm.DB) *gorm.DB {
-
 		if parsedID > 0 {
 			tx = tx.Where("id = ?", parsedID)
 		}
@@ -218,9 +218,11 @@ func (handler *categoryHandler) Restore(ctx echo.Context) error {
 	return ctx.JSON(200, data)
 }
 
-func (handler *categoryHandler) ForceDelete(ctx echo.Context) error {
+func (handler *contryHandler) ForceDelete(ctx echo.Context) error {
+
 	idParam := ctx.Param("id")
-	parsedID, err := strconv.ParseUint(idParam, 10, 64)
+
+	parsedID, err := strconv.ParseInt(idParam, 10, 64)
 	{
 		if err != nil {
 			return ctx.JSON(http.StatusBadRequest, echo.Map{"error": "invalid id"})
@@ -228,7 +230,6 @@ func (handler *categoryHandler) ForceDelete(ctx echo.Context) error {
 	}
 
 	filter := func(tx *gorm.DB) *gorm.DB {
-
 		if parsedID > 0 {
 			tx = tx.Where("id = ?", parsedID)
 		}

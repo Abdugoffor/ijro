@@ -1,4 +1,4 @@
-package category_model
+package country_model
 
 import (
 	"time"
@@ -6,7 +6,7 @@ import (
 	"gorm.io/gorm"
 )
 
-type Category struct {
+type Country struct {
 	ID        int            `json:"id"`
 	Name      string         `json:"name"`
 	IsActive  bool           `json:"is_active"`
@@ -15,6 +15,6 @@ type Category struct {
 	DeletedAt gorm.DeletedAt `json:"deleted_at" gorm:"index"`
 }
 
-func (Category) TableName() string {
-	return "categories"
+func (Country) TableName() string {
+	return "countries"
 }

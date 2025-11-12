@@ -1,4 +1,0 @@
-﻿# golang-delivriy
-```
-docker-compose up --build
-```

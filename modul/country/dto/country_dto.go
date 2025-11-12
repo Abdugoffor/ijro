@@ -1,13 +1,13 @@
-package category_dto
+package country_dto
 
 import (
 	"ijro-nazorat/helper"
-	category_model "ijro-nazorat/modul/category/model"
+	country_model "ijro-nazorat/modul/country/model"
 )
 
 type CreateOrUpdate struct {
 	Name     string `json:"name"`
-	IsActive *bool  `json:"is_active"` // pointer bool
+	IsActive *bool  `json:"is_active"`
 }
 
 type Filter struct {
@@ -26,13 +26,13 @@ type Response struct {
 	DeletedAt string `json:"deleted_at"`
 }
 
-func ToResponse(category category_model.Category) Response {
+func ToResponse(model country_model.Country) Response {
 	return Response{
-		ID:        category.ID,
-		Name:      category.Name,
-		IsActive:  category.IsActive,
-		CreatedAt: helper.FormatDate(category.CreatedAt),
-		UpdatedAt: helper.FormatDate(category.UpdatedAt),
-		DeletedAt: helper.FormatDate(category.DeletedAt),
+		ID:        model.ID,
+		Name:      model.Name,
+		IsActive:  model.IsActive,
+		CreatedAt: helper.FormatDate(model.CreatedAt),
+		UpdatedAt: helper.FormatDate(model.UpdatedAt),
+		DeletedAt: helper.FormatDate(model.DeletedAt),
 	}
 }
