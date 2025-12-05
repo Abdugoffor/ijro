@@ -1,20 +1,20 @@
 
 services:
-  app:
+  app_local:
     build: .
-    container_name: my_go_app
+    container_name: app_local
     restart: always
     ports:
       - "8070:8070"
     env_file:
       - .env
     depends_on:
-      - postgres
-      - redis
+      - postgres_local
+      - redis_local
 
-  postgres:
+  postgres_local:
     image: postgres:15
-    container_name: my_postgres
+    container_name: postgres_local
     restart: always
     ports:
       - "5432:5432"
@@ -25,14 +25,14 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
-  redis:
+  redis_local:
     image: redis:7
-    container_name: my_redis
+    container_name: redis_local
     restart: always
     ports:
       - "6379:6379"
 
-  pgadmin:
+  pgadmin_local:
     image: adminer
     restart: always
     ports:
