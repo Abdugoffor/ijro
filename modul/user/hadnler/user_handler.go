@@ -49,6 +49,7 @@ func (handler *userHandler) All(ctx echo.Context) error {
 	}
 
 	filter := func(tx *gorm.DB) *gorm.DB {
+
 		switch query.Status {
 		case "open":
 			tx = tx.Where("deleted_at IS NULL")
@@ -78,7 +79,7 @@ func (handler *userHandler) All(ctx echo.Context) error {
 			sortColumn = fmt.Sprintf("users.%s %s", query.Column, query.Sort)
 		}
 
-		return tx.Order(sortColumn)
+		return tx.Preload("Country").Group("users.id").Order(sortColumn)
 	}
 
 	res, err := handler.service.All(ctx, filter)
@@ -105,7 +106,7 @@ func (handler *userHandler) Show(ctx echo.Context) error {
 		if parsedID > 0 {
 			tx = tx.Where("id = ?", parsedID)
 		}
-		return tx
+		return tx.Preload("Country")
 	}
 
 	data, err := handler.service.Show(ctx, filter)

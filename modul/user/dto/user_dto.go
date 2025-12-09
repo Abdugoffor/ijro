@@ -25,12 +25,13 @@ type Filter struct {
 }
 
 type Response struct {
-	ID        int    `json:"id"`
-	Name      string `json:"name"`
-	Email     string `json:"email"`
-	Role      string `json:"role"`
-	IsActive  bool   `json:"is_active"`
-	CreatedAt string `json:"created_at"`
+	ID        int    `json:"id" gorm:"column:id"`
+	Name      string `json:"name" gorm:"column:name"`
+	Email     string `json:"email" gorm:"column:email"`
+	Role      string `json:"role" gorm:"column:role"`
+	Country   string `json:"country" gorm:"column:country"` // ← country
+	IsActive  bool   `json:"is_active" gorm:"column:is_active"`
+	CreatedAt string `json:"created_at" gorm:"column:created_at"`
 }
 
 func ToResponse(user user_model.User) Response {
@@ -39,6 +40,7 @@ func ToResponse(user user_model.User) Response {
 		Name:      user.Name,
 		Email:     user.Email,
 		Role:      user.Role,
+		Country:   user.Country.Name,
 		IsActive:  user.IsActive,
 		CreatedAt: helper.FormatDate(user.CreatedAt),
 	}

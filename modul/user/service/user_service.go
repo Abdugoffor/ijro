@@ -50,6 +50,7 @@ func (service *userService) All(ctx echo.Context, filter func(tx *gorm.DB) *gorm
 	}, nil
 
 }
+
 func (service *userService) Show(ctx echo.Context, filter func(tx *gorm.DB) *gorm.DB) (user_dto.Response, error) {
 	var model user_model.User
 	{

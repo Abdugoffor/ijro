@@ -1,23 +1,23 @@
 
 services:
-  app_local:
-    build: .
-    container_name: app_local
-    restart: always
-    ports:
-      - "8070:8070"
-    env_file:
-      - .env
-    depends_on:
-      - postgres_local
-      - redis_local
+  # app_local:
+  #   build: .
+  #   container_name: app_local
+  #   restart: always
+  #   ports:
+  #     - "8070:8070"
+  #   env_file:
+  #     - .env
+  #   depends_on:
+  #     - postgres_local
+  #     - redis_local
 
   postgres_local:
     image: postgres:15
     container_name: postgres_local
     restart: always
     ports:
-      - "5432:5432"
+      - "5440:5432"
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
