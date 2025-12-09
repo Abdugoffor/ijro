@@ -13,7 +13,7 @@ type User struct {
 	Email     string                `json:"email" gorm:"uniqueIndex"`
 	Password  string                `json:"password"`
 	Role      string                `json:"role" default:"user"`
-	CountryID *int                  `json:"country_id" gorm:"column:country_id"`
+	CountryID int                   `json:"country_id" gorm:"column:country_id"`
 	Country   country_model.Country `json:"country" gorm:"foreignKey:CountryID"`
 	IsActive  bool                  `json:"is_active" default:"true"`
 	CreatedAt time.Time             `json:"created_at"`

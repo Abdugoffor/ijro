@@ -10,7 +10,7 @@ type CreateOrUpdate struct {
 	Email     string `json:"email"`
 	Password  string `json:"password"`
 	Role      string `json:"role"`
-	CountryID *int   `json:"country_id"`
+	CountryID int    `json:"country_id"`
 	IsActive  *bool  `json:"is_active"`
 }
 

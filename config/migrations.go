@@ -1,6 +1,7 @@
 package config
 
 import (
+	application_model "ijro-nazorat/modul/application/model"
 	category_model "ijro-nazorat/modul/category/model"
 	country_model "ijro-nazorat/modul/country/model"
 	user_model "ijro-nazorat/modul/user/model"
@@ -12,6 +13,7 @@ func RunMigrations() {
 		&category_model.Category{},
 		&country_model.Country{},
 		&user_model.User{},
+		&application_model.Application{},
 	}
 
 	err := DB.AutoMigrate(models...)

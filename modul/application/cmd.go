@@ -1,8 +1,8 @@
-package user_cmd
+package application_cmd
 
 import (
 	"ijro-nazorat/middleware"
-	user_handler "ijro-nazorat/modul/user/hadnler"
+	application_handler "ijro-nazorat/modul/application/handler"
 	"log"
 
 	"github.com/labstack/echo/v4"
@@ -12,6 +12,6 @@ import (
 func Cmd(route *echo.Echo, db *gorm.DB, log *log.Logger) {
 	routerGroup := route.Group("/admin", middleware.JWTMiddleware, middleware.RoleMiddleware("admin"))
 	{
-		user_handler.NewUserHandler(routerGroup, db, log)
+		application_handler.NewApplicationHandler(routerGroup, db, log)
 	}
 }
