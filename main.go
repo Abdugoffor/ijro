@@ -7,6 +7,7 @@ import (
 	auth_cmd "ijro-nazorat/modul/auth"
 	category_cmd "ijro-nazorat/modul/category"
 	country_cmd "ijro-nazorat/modul/country"
+	form_cmd "ijro-nazorat/modul/form"
 	user_cmd "ijro-nazorat/modul/user"
 	"ijro-nazorat/seeder"
 	"log"
@@ -30,7 +31,8 @@ func main() {
 	country_cmd.Cmd(route, config.DB, log.Default())
 	user_cmd.Cmd(route, config.DB, log.Default())
 	application_cmd.Cmd(route, config.DB, log.Default())
-	
+
+	form_cmd.Cmd(route, config.DB, log.Default())
 
 	route.Logger.Fatal(route.Start(":" + helper.ENV("HTTP_PORT")))
 }

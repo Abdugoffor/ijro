@@ -1,21 +1,25 @@
 package category_service
 
 import (
-	"ijro-nazorat/helper"
+	"context"
 	category_dto "ijro-nazorat/modul/category/dto"
 	category_model "ijro-nazorat/modul/category/model"
 
+	"git.sriss.uz/shared/shared_service/pg"
+	"git.sriss.uz/shared/shared_service/request"
 	"github.com/labstack/echo/v4"
 	"gorm.io/gorm"
 )
 
 type CategoryService interface {
-	All(ctx echo.Context, filter func(tx *gorm.DB) *gorm.DB) (helper.PaginatedResponse[category_dto.Response], error)
-	Show(ctx echo.Context, filter func(tx *gorm.DB) *gorm.DB) (category_dto.Response, error)
+	All(ctx context.Context, paginate *request.Paginate, filter pg.Filter) (*category_dto.CategoryPage, error)
+
+	// All(ctx echo.Context, filter func(tx *gorm.DB) *gorm.DB) (helper.PaginatedResponse[category_dto.Response], error)
+	Show(ctx context.Context, filter pg.Filter) (*category_dto.Response, error)
 	Create(ctx echo.Context, req category_dto.CreateOrUpdate) (category_dto.Response, error)
 	Update(ctx echo.Context, filter func(tx *gorm.DB) *gorm.DB, category category_dto.CreateOrUpdate) (category_dto.Response, error)
 	Delete(ctx echo.Context, filter func(tx *gorm.DB) *gorm.DB) error
-	Restore(ctx echo.Context, filter func(tx *gorm.DB) *gorm.DB) (category_dto.Response, error)
+	Restore(ctx context.Context, filter pg.Filter) (category_dto.Response, error)
 	ForceDelete(ctx echo.Context, filter func(tx *gorm.DB) *gorm.DB) error
 }
 
@@ -27,39 +31,35 @@ func NewCategoryService(db *gorm.DB) CategoryService {
 	return &categoryService{db: db}
 }
 
-func (service *categoryService) All(ctx echo.Context, filter func(tx *gorm.DB) *gorm.DB) (helper.PaginatedResponse[category_dto.Response], error) {
-	var models []category_model.Category
+// func (service *categoryService) All(ctx echo.Context, filter func(tx *gorm.DB) *gorm.DB) (helper.PaginatedResponse[category_dto.Response], error) {
+// 	var models []category_model.Category
 
-	res, err := helper.Paginate(ctx, service.db.Scopes(filter), &models, 10)
-	{
-		if err != nil {
-			return helper.PaginatedResponse[category_dto.Response]{}, err
-		}
-	}
+// 	res, err := helper.Paginate(ctx, service.db.Scopes(filter), &models, 10)
+// 	{
+// 		if err != nil {
+// 			return helper.PaginatedResponse[category_dto.Response]{}, err
+// 		}
+// 	}
 
-	var data []category_dto.Response
-	{
-		for _, model := range models {
-			data = append(data, category_dto.ToResponse(model))
-		}
-	}
+// 	var data []category_dto.Response
+// 	{
+// 		for _, model := range models {
+// 			data = append(data, category_dto.ToResponse(model))
+// 		}
+// 	}
 
-	return helper.PaginatedResponse[category_dto.Response]{
-		Data: data,
-		Meta: res.Meta,
-	}, nil
+// 	return helper.PaginatedResponse[category_dto.Response]{
+// 		Data: data,
+// 		Meta: res.Meta,
+// 	}, nil
+// }
+
+func (service *categoryService) All(ctx context.Context, paginate *request.Paginate, filter pg.Filter) (*category_dto.CategoryPage, error) {
+	return pg.PageWithScan[category_model.Category, category_dto.Response](service.db, paginate, filter)
 }
 
-func (service *categoryService) Show(ctx echo.Context, filter func(tx *gorm.DB) *gorm.DB) (category_dto.Response, error) {
-	var model category_model.Category
-	{
-		if err := service.db.Scopes(filter).First(&model).Error; err != nil {
-			return category_dto.Response{}, err
-		}
-	}
-
-	res := category_dto.ToResponse(model)
-	return res, nil
+func (service *categoryService) Show(ctx context.Context, filter pg.Filter) (*category_dto.Response, error) {
+	return pg.FindOneWithScan[category_model.Category, category_dto.Response](service.db, filter)
 }
 
 func (service *categoryService) Create(ctx echo.Context, req category_dto.CreateOrUpdate) (category_dto.Response, error) {
@@ -115,7 +115,7 @@ func (service *categoryService) Delete(ctx echo.Context, filter func(tx *gorm.DB
 	return nil
 }
 
-func (service *categoryService) Restore(ctx echo.Context, filter func(tx *gorm.DB) *gorm.DB) (category_dto.Response, error) {
+func (service *categoryService) Restore(ctx context.Context, filter func(tx *gorm.DB) *gorm.DB) (category_dto.Response, error) {
 	var model category_model.Category
 	{
 		if err := service.db.Unscoped().Scopes(filter).First(&model).Error; err != nil {

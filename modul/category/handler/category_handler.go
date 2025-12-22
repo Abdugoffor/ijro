@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 
+	"git.sriss.uz/shared/shared_service/request"
 	"github.com/labstack/echo/v4"
 	"gorm.io/gorm"
 )
@@ -41,6 +42,7 @@ func NewCategoryHandler(gorm *echo.Group, db *gorm.DB, log *log.Logger) category
 }
 
 func (handler *categoryHandler) All(ctx echo.Context) error {
+	req := request.Request(ctx)
 	var query category_dto.Filter
 	{
 		if err := ctx.Bind(&query); err != nil {
@@ -75,7 +77,7 @@ func (handler *categoryHandler) All(ctx echo.Context) error {
 		return tx
 	}
 
-	data, err := handler.service.All(ctx, filter)
+	data, err := handler.service.All(req.Context(), req.NewPaginate(), filter)
 	{
 		if err != nil {
 			return err
@@ -86,6 +88,8 @@ func (handler *categoryHandler) All(ctx echo.Context) error {
 }
 
 func (handler *categoryHandler) Show(ctx echo.Context) error {
+	req := request.Request(ctx)
+
 	idParam := ctx.Param("id")
 	parsedID, err := strconv.ParseUint(idParam, 10, 64)
 	{
@@ -102,7 +106,7 @@ func (handler *categoryHandler) Show(ctx echo.Context) error {
 		return tx
 	}
 
-	data, err := handler.service.Show(ctx, filter)
+	data, err := handler.service.Show(req.Context(), filter)
 	{
 		if err != nil {
 			return ctx.JSON(http.StatusInternalServerError, echo.Map{"error": err.Error()})
@@ -192,6 +196,7 @@ func (handler *categoryHandler) Delete(ctx echo.Context) error {
 }
 
 func (handler *categoryHandler) Restore(ctx echo.Context) error {
+	req := request.Request(ctx)
 	idParam := ctx.Param("id")
 	parsedID, err := strconv.ParseUint(idParam, 10, 64)
 	{
@@ -208,7 +213,7 @@ func (handler *categoryHandler) Restore(ctx echo.Context) error {
 		return tx
 	}
 
-	data, err := handler.service.Restore(ctx, filter)
+	data, err := handler.service.Restore(req.Context(), filter)
 	{
 		if err != nil {
 			return ctx.JSON(http.StatusInternalServerError, echo.Map{"error": err.Error()})

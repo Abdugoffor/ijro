@@ -3,7 +3,11 @@ package category_dto
 import (
 	"ijro-nazorat/helper"
 	category_model "ijro-nazorat/modul/category/model"
+
+	"git.sriss.uz/shared/shared_service/response"
 )
+
+type CategoryPage = response.PageData[Response]
 
 type CreateOrUpdate struct {
 	Name     string `json:"name"`
