@@ -14,5 +14,6 @@ func Cmd(route *echo.Echo, db *gorm.DB, log *log.Logger) {
 		form_handler.NewAppCategoryHandler(routerGroup, db, log)
 		form_handler.NewPageHandler(routerGroup, db, log)
 		form_handler.NewFormHandler(routerGroup, db, log)
+		form_handler.NewAppHandler(routerGroup, db, log)
 	}
 }

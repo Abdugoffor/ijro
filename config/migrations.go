@@ -19,6 +19,8 @@ func RunMigrations() {
 		&form_model.AppCategory{},
 		&form_model.Page{},
 		&form_model.Form{},
+		&form_model.App{},
+		&form_model.AppInfo{},
 	}
 
 	err := DB.AutoMigrate(models...)
