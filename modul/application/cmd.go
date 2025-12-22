@@ -1,7 +1,6 @@
 package application_cmd
 
 import (
-	"ijro-nazorat/middleware"
 	application_handler "ijro-nazorat/modul/application/handler"
 	"log"
 
@@ -10,8 +9,9 @@ import (
 )
 
 func Cmd(route *echo.Echo, db *gorm.DB, log *log.Logger) {
-	routerGroup := route.Group("/admin", middleware.JWTMiddleware, middleware.RoleMiddleware("admin"))
+	routerGroup := route.Group("/admin")
 	{
 		application_handler.NewApplicationHandler(routerGroup, db, log)
+		application_handler.NewApplicationClinetHandler(routerGroup, db, log)
 	}
 }

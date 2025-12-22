@@ -5,6 +5,7 @@ import (
 	"ijro-nazorat/helper"
 	application_dto "ijro-nazorat/modul/application/dto"
 	application_model "ijro-nazorat/modul/application/model"
+	"net/http"
 
 	"github.com/labstack/echo/v4"
 	"gorm.io/gorm"
@@ -15,6 +16,8 @@ type ApplicationService interface {
 	Show(ctx echo.Context, filter func(tx *gorm.DB) *gorm.DB) (application_dto.Response, error)
 	Create(ctx echo.Context, req application_dto.Create) (application_dto.Response, error)
 	Update(ctx echo.Context, filter func(tx *gorm.DB) *gorm.DB, req application_dto.Update) (application_dto.Response, error)
+	AnswerCreate(ctx echo.Context, filter func(tx *gorm.DB) *gorm.DB, req application_dto.AnswerCreate) (application_dto.AnswerResponse, error)
+	StatusUpdate(ctx echo.Context, filter func(tx *gorm.DB) *gorm.DB, req application_dto.StatusUpdate) (application_dto.Response, error)
 	Delete(ctx echo.Context, filter func(tx *gorm.DB) *gorm.DB) error
 	Restore(ctx echo.Context, filter func(tx *gorm.DB) *gorm.DB) (application_dto.Response, error)
 	ForceDelete(ctx echo.Context, filter func(tx *gorm.DB) *gorm.DB) error
@@ -51,7 +54,18 @@ func (service *applicationService) All(ctx echo.Context, filter func(tx *gorm.DB
 }
 
 func (service *applicationService) Show(ctx echo.Context, filter func(tx *gorm.DB) *gorm.DB) (application_dto.Response, error) {
-	return application_dto.Response{}, nil
+	var model application_model.Application
+	{
+		if err := service.db.Scopes(filter).First(&model).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return application_dto.Response{}, echo.NewHTTPError(http.StatusNotFound, "application not found")
+			}
+			return application_dto.Response{}, err
+		}
+	}
+
+	res := application_dto.ToResponse(model)
+	return res, nil
 }
 
 func (service *applicationService) Create(ctx echo.Context, req application_dto.Create) (application_dto.Response, error) {
@@ -79,7 +93,105 @@ func (service *applicationService) Create(ctx echo.Context, req application_dto.
 }
 
 func (service *applicationService) Update(ctx echo.Context, filter func(tx *gorm.DB) *gorm.DB, req application_dto.Update) (application_dto.Response, error) {
-	return application_dto.Response{}, nil
+	var model application_model.Application
+	{
+		if err := service.db.Scopes(filter).First(&model).Error; err != nil {
+			return application_dto.Response{}, err
+		}
+	}
+
+	model.Name = req.Name
+	model.Description = req.Description
+	model.Image = req.Image
+	model.File = req.File
+	model.CategoryID = req.CategoryID
+	model.Status = req.Status
+
+	if err := service.db.Save(&model).Error; err != nil {
+		return application_dto.Response{}, err
+	}
+
+	res := application_dto.ToResponse(model)
+	return res, nil
+}
+
+func (service *applicationService) AnswerCreate(ctx echo.Context, filter func(tx *gorm.DB) *gorm.DB, req application_dto.AnswerCreate) (application_dto.AnswerResponse, error) {
+
+	claims := ctx.Get("user").(*helper.Claims)
+
+	var model application_model.Application
+	{
+		if err := service.db.Scopes(filter).First(&model).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return application_dto.AnswerResponse{}, echo.NewHTTPError(http.StatusNotFound, "application not found")
+			}
+			return application_dto.AnswerResponse{}, err
+		}
+	}
+
+	// answer variable must be OUTSIDE transaction
+	var answer application_model.Answer
+
+	err := service.db.Transaction(func(tx *gorm.DB) error {
+
+		// find answer
+		err := tx.Where("application_id = ?", model.ID).First(&answer).Error
+
+		// create if not exists
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			answer = application_model.Answer{
+				ApplicationId: model.ID,
+				UserId:        claims.UserID,
+				Answer:        req.Answer,
+				Status:        "pending",
+			}
+			if err := tx.Create(&answer).Error; err != nil {
+				return err
+			}
+		} else if err != nil {
+			return err
+		}
+
+		if err := tx.Preload("User").
+			Preload("Application.User").
+			Preload("Application.Category").
+			Preload("Application.Country").First(&answer, answer.ID).Error; err != nil {
+			return err
+		}
+
+		// update model status
+		if model.Status != "answered" {
+			if err := tx.Model(&model).Update("status", "answered").Error; err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return application_dto.AnswerResponse{}, err
+	}
+
+	return application_dto.ToAnswerResponse(answer), nil
+}
+
+func (service *applicationService) StatusUpdate(ctx echo.Context, filter func(tx *gorm.DB) *gorm.DB, req application_dto.StatusUpdate) (application_dto.Response, error) {
+	var model application_model.Application
+	{
+		if err := service.db.Scopes(filter).First(&model).Error; err != nil {
+			return application_dto.Response{}, err
+		}
+	}
+
+	model.Status = req.Status
+
+	if err := service.db.Save(&model).Error; err != nil {
+		return application_dto.Response{}, err
+	}
+
+	res := application_dto.ToResponse(model)
+	return res, nil
 }
 
 func (service *applicationService) Delete(ctx echo.Context, filter func(tx *gorm.DB) *gorm.DB) error {

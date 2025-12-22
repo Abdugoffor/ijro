@@ -30,7 +30,7 @@ func NewAuthHandler(gorm *echo.Group, db *gorm.DB, log *log.Logger) authHandler 
 		routes.POST("/login", handler.Login)
 		routes.POST("/refresh-token", handler.RefreshToken)
 		routes.POST("/logout", handler.Logout)
-		routes.GET("/me", handler.Me, middleware.JWTMiddleware, middleware.RoleMiddleware("admin"))
+		routes.GET("/me", handler.Me, middleware.JWTMiddleware)
 	}
 
 	return handler

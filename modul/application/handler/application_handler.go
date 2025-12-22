@@ -5,6 +5,7 @@ import (
 	application_dto "ijro-nazorat/modul/application/dto"
 	application_service "ijro-nazorat/modul/application/service"
 	"log"
+	"strings"
 
 	"github.com/labstack/echo/v4"
 	"gorm.io/gorm"
@@ -46,10 +47,28 @@ func (handler *applicationHandler) All(ctx echo.Context) error {
 	}
 
 	filter := func(tx *gorm.DB) *gorm.DB {
+		if query.Name != "" {
+			search := "%" + strings.ToLower(query.Name) + "%"
+			tx = tx.Where("LOWER(applications.name) LIKE ?", search)
+		}
+
+		if query.CountryID != nil {
+			tx = tx.Where("country_id = ?", *query.CountryID)
+		}
+
+		if query.CategoryID != nil {
+			tx = tx.Where("category_id = ?", *query.CategoryID)
+		}
+
+		if query.Status != "" {
+			tx = tx.Where("LOWER(applications.status) = ?", strings.ToLower(query.Status))
+		}
+
 		return tx.
 			Preload("User").
 			Preload("Category").
-			Preload("Country")
+			Preload("Country").
+			Preload("Answers")
 	}
 
 	res, err := handler.service.All(ctx, filter)

@@ -14,6 +14,7 @@ func RunMigrations() {
 		&country_model.Country{},
 		&user_model.User{},
 		&application_model.Application{},
+		&application_model.Answer{},
 	}
 
 	err := DB.AutoMigrate(models...)

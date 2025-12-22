@@ -21,6 +21,8 @@ type Application struct {
 	Status      string                  `json:"status" gorm:"default:pending"`
 	CreatedAt   string                  `json:"created_at"`
 	UpdatedAt   string                  `json:"updated_at"`
+
+	Answers []Answer `json:"answers" gorm:"foreignKey:ApplicationId"`
 }
 
 func (Application) TableName() string {

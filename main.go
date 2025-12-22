@@ -30,6 +30,7 @@ func main() {
 	country_cmd.Cmd(route, config.DB, log.Default())
 	user_cmd.Cmd(route, config.DB, log.Default())
 	application_cmd.Cmd(route, config.DB, log.Default())
+	
 
 	route.Logger.Fatal(route.Start(":" + helper.ENV("HTTP_PORT")))
 }
