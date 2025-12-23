@@ -10,6 +10,7 @@ import (
 	form_cmd "ijro-nazorat/modul/form"
 	user_cmd "ijro-nazorat/modul/user"
 	"ijro-nazorat/seeder"
+	"ijro-nazorat/views"
 	"log"
 
 	"github.com/labstack/echo/v4"
@@ -17,12 +18,12 @@ import (
 
 func main() {
 	helper.LoadEnv()
-
 	config.DBConnect()
-
 	seeder.DBSeeders()
 
 	route := echo.New()
+
+	route.Renderer = views.NewRenderer()
 
 	route.Validator = config.NewValidator()
 

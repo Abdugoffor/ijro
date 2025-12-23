@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"git.sriss.uz/shared/shared_service/response"
-	"gorm.io/datatypes"
+	"git.sriss.uz/shared/shared_service/sharedutil"
 )
 
 type CatePage = response.PageData[Page]
@@ -18,7 +18,7 @@ type Page struct {
 	UpdatedAt     time.Time `json:"updated_at"`
 	DeletedAt     time.Time `json:"deleted_at"`
 	// Categorry     datatypes.JSON `json:"categorry"`
-	Form datatypes.JSON `json:"form"`
+	Form sharedutil.JsonArray `json:"form"`
 }
 
 type PageCreate struct {

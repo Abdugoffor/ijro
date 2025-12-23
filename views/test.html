@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="uz">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Application</title>
+    <style>
+        body {
+            font-family: sans-serif;
+        }
+
+        .page {
+            margin-left: 20px;
+        }
+
+        .form {
+            margin-left: 40px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>Application #{{ .App.ID }}</h1>
+
+    <p><b>Created:</b> {{ .App.CreatedAt }}</p>
+    <p><b>Updated:</b> {{ .App.UpdatedAt }}</p>
+
+    <hr>
+
+    <h2>Category</h2>
+    <p>
+        ID: {{ .App.Category.id }} <br>
+        Name: {{ .App.Category.name }} <br>
+        Active: {{ .App.Category.is_active }}
+    </p>
+
+    <hr>
+
+    <h2>Pages</h2>
+
+    {{ range .App.Pages }}
+    <div class="page">
+        <h3>📄 {{ .name }}</h3>
+        <p>Active: {{ .is_active }}</p>
+
+        {{ range .forms }}
+        <div class="form">
+            <b>{{ .label }}</b> ({{ .name }})<br>
+            Answer: {{ .answer }}
+        </div>
+        {{ end }}
+    </div>
+    {{ else }}
+    <p>Page yo‘q</p>
+    {{ end }}
+
+</body>
+
+</html>

@@ -2,19 +2,18 @@ package form_dto
 
 import (
 	"git.sriss.uz/shared/shared_service/response"
-	"gorm.io/datatypes"
+	"git.sriss.uz/shared/shared_service/sharedutil"
 )
 
 type AppPage = response.PageData[AppInfo]
 
 type AppInfo struct {
-	ID        int            `json:"id"`
-	Category  datatypes.JSON `json:"category"`
-	Pages     datatypes.JSON `json:"pages"`
-	CreatedAt string         `json:"created_at"`
-	UpdatedAt string         `json:"updated_at"`
-	DeletedAt *string        `json:"deleted_at,omitempty"` // nullable
-
+	ID        int                   `json:"id"`
+	Category  sharedutil.JsonObject `json:"category"` // object → OK
+	Pages     sharedutil.JsonArray  `json:"pages"`    // array → JsonArray
+	CreatedAt string                `json:"created_at"`
+	UpdatedAt string                `json:"updated_at"`
+	DeletedAt *string               `json:"deleted_at,omitempty"` // nullable
 }
 
 type ApplicationCreate struct {

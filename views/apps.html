@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Applications</title>
+
+    <!-- Bootstrap -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+
+<body class="bg-light">
+
+    <div class="container my-5">
+
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="fw-bold">📄 Applications</h2>
+            <span class="text-muted">
+                Total: {{.Total}}
+            </span>
+        </div>
+
+        <div class="card shadow-sm">
+            <div class="card-body p-0">
+
+                <table class="table table-hover table-bordered align-middle mb-0">
+                    <thead class="table-dark">
+                        <tr>
+                            <th style="width: 80px;">ID</th>
+                            <th>Category</th>
+                            <th>Pages / Forms</th>
+                            <th style="width: 200px;">Created At</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        {{range .Apps}}
+                        <tr>
+                            <td class="fw-bold">{{.ID}}</td>
+
+                            <td>
+                                <span class="badge bg-primary">
+                                    {{index .Category "name"}}
+                                </span>
+                            </td>
+
+                            <td>
+                                {{range .Pages}}
+                                <!-- <div class="mb-2">
+                                    <div class="fw-semibold text-success"> -->
+                                        📘 {{index . "name"}}
+                                    <!-- </div>
+
+                                    <ul class="list-group list-group-flush ms-3"> -->
+                                        {{range (index . "forms")}}
+                                        <!-- <li class="list-group-item py-1"> -->
+                                            <strong>{{index . "label"}}:</strong>
+                                            <span class="text-muted">
+                                                {{index . "answer"}}
+                                            </span>
+                                        <!-- </li> -->
+                                        {{end}}
+                                    <!-- </ul> -->
+                                </div>
+                                {{end}}
+                            </td>
+
+                            <td class="text-muted">
+                                {{.CreatedAt}}
+                            </td>
+                        </tr>
+                        {{end}}
+                    </tbody>
+                </table>
+
+            </div>
+        </div>
+
+        <!-- Pagination -->
+        <nav class="mt-4">
+            <ul class="pagination justify-content-center">
+
+                {{if gt .CurrentPage 1}}
+                <li class="page-item">
+                    <a class="page-link" href="/admin/app?page={{minus .CurrentPage 1}}">
+                        ⬅ Previous
+                    </a>
+                </li>
+                {{else}}
+                <li class="page-item disabled">
+                    <span class="page-link">⬅ Previous</span>
+                </li>
+                {{end}}
+
+                <li class="page-item disabled">
+                    <span class="page-link">
+                        Page {{.CurrentPage}} / {{.TotalPages}}
+                    </span>
+                </li>
+
+                {{if lt .CurrentPage .TotalPages}}
+                <li class="page-item">
+                    <a class="page-link" href="/admin/app?page={{plus .CurrentPage 1}}">
+                        Next ➡
+                    </a>
+                </li>
+                {{else}}
+                <li class="page-item disabled">
+                    <span class="page-link">Next ➡</span>
+                </li>
+                {{end}}
+
+            </ul>
+        </nav>
+
+    </div>
+
+</body>
+
+</html>
