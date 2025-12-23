@@ -1,14 +1,18 @@
 package form_service
 
 import (
+	"context"
 	form_dto "ijro-nazorat/modul/form/dto"
 	form_model "ijro-nazorat/modul/form/model"
 
+	"git.sriss.uz/shared/shared_service/pg"
+	"git.sriss.uz/shared/shared_service/request"
 	"github.com/labstack/echo/v4"
 	"gorm.io/gorm"
 )
 
 type AppService interface {
+	All(ctx context.Context, paginate *request.Paginate, filter pg.Filter) (*form_dto.AppPage, error)
 	Create(ctx echo.Context, req form_dto.ApplicationCreate) (int, error)
 }
 
@@ -20,6 +24,10 @@ func NewAppService(db *gorm.DB) AppService {
 	return &appService{
 		db: db,
 	}
+}
+
+func (service *appService) All(ctx context.Context, paginate *request.Paginate, filter pg.Filter) (*form_dto.AppPage, error) {
+	return pg.PageWithScan[form_model.App, form_dto.AppInfo](service.db, paginate, filter)
 }
 
 func (service *appService) Create(ctx echo.Context, req form_dto.ApplicationCreate) (int, error) {
