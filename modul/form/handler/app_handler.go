@@ -8,6 +8,7 @@ import (
 	"strconv"
 
 	"git.sriss.uz/shared/shared_service/request"
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/labstack/echo/v4"
 	"gorm.io/gorm"
 )
@@ -16,6 +17,9 @@ type AppHandler struct {
 	db      *gorm.DB
 	log     *log.Logger
 	service form_service.AppService
+
+	TelegramToken string
+	ChatID        int64
 }
 
 func NewAppHandler(gorm *echo.Group, db *gorm.DB, log *log.Logger) {
@@ -23,6 +27,9 @@ func NewAppHandler(gorm *echo.Group, db *gorm.DB, log *log.Logger) {
 		db:      db,
 		log:     log,
 		service: form_service.NewAppService(db),
+
+		TelegramToken: "8189554946:AAHJDfN16ghjTkjOkG_wcx1z8mHrxz4z6cQ",
+		ChatID:        415906009,
 	}
 
 	routes := gorm.Group("/app")
@@ -30,6 +37,7 @@ func NewAppHandler(gorm *echo.Group, db *gorm.DB, log *log.Logger) {
 		routes.GET("", handler.All)
 		routes.GET("/:id", handler.Show)
 		routes.POST("", handler.Create)
+		routes.GET("/bot", handler.Telegram)
 	}
 }
 
@@ -199,4 +207,84 @@ func (handler *AppHandler) Create(ctx echo.Context) error {
 	return ctx.JSON(201, map[string]any{
 		"app_id": appID,
 	})
+}
+
+func (handler *AppHandler) Telegram(ctx echo.Context) error {
+	// Telegram bot yaratish
+	bot, err := tgbotapi.NewBotAPI(handler.TelegramToken)
+	if err != nil {
+		log.Println("Bot yaratishda xatolik:", err)
+		return ctx.JSON(http.StatusInternalServerError, map[string]string{"error": "Bot yaratilmadi"})
+	}
+
+	// Webhookni o'chirish (polling ishlashi uchun)
+	_, _ = bot.Request(tgbotapi.DeleteWebhookConfig{})
+
+	chatID := handler.ChatID
+
+	// 1️⃣ /start xabarini yuborish
+	startMsg := tgbotapi.NewMessage(chatID, "Salom! /start ni bosishingiz mumkin.")
+	bot.Send(startMsg)
+
+	// 2️⃣ Inline button yaratish
+	msg := tgbotapi.NewMessage(chatID, "Tugmani bosing:")
+	keyboard := tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Button 1", "btn_1"),
+			tgbotapi.NewInlineKeyboardButtonData("Button 2", "btn_2"),
+		),
+	)
+	msg.ReplyMarkup = keyboard
+	if _, err := bot.Send(msg); err != nil {
+		log.Println("Button yuborilmadi:", err)
+	}
+
+	// 3️⃣ Polling orqali xabar va button callback qabul qilish
+	go func() {
+		u := tgbotapi.NewUpdate(0)
+		u.Timeout = 60
+		updates := bot.GetUpdatesChan(u)
+
+		for update := range updates {
+			chatID := int64(0)
+			userName := ""
+
+			// Agar foydalanuvchi xabar yuborsa
+			if update.Message != nil {
+				chatID = update.Message.Chat.ID
+				userName = update.Message.From.UserName
+				text := update.Message.Text
+
+				if text == "/start" {
+					msg := tgbotapi.NewMessage(chatID, "Salom, "+userName+"!")
+					bot.Send(msg)
+				} else {
+					reply := userName + ", siz shuni yozdingiz: " + text
+					bot.Send(tgbotapi.NewMessage(chatID, reply))
+				}
+			}
+
+			// Agar foydalanuvchi button bosgan bo‘lsa
+			if update.CallbackQuery != nil {
+				callback := update.CallbackQuery
+				chatID = callback.Message.Chat.ID
+				userName = callback.From.UserName
+
+				var answerText string
+				switch callback.Data {
+				case "btn_1":
+					answerText = userName + ", siz Button 1 ni bosdingiz!"
+				case "btn_2":
+					answerText = userName + ", siz Button 2 ni bosdingiz!"
+				default:
+					answerText = userName + ", noma'lum tugma"
+				}
+
+				bot.Send(tgbotapi.NewMessage(chatID, answerText))
+				bot.Request(tgbotapi.NewCallback(callback.ID, "✔"))
+			}
+		}
+	}()
+
+	return ctx.JSON(http.StatusOK, map[string]string{"message": "Bot ishlayapti"})
 }
