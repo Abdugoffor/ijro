@@ -36,8 +36,10 @@ func NewAppHandler(gorm *echo.Group, db *gorm.DB, log *log.Logger) {
 func (handler *AppHandler) All(ctx echo.Context) error {
 	req := request.Request(ctx)
 
+	categoryFilter := ctx.QueryParam("category")
+
 	filter := func(tx *gorm.DB) *gorm.DB {
-		return tx.Select(`
+		tx.Select(`
 			app.id,
 			to_char(app.created_at, 'YYYY-MM-DD HH24:MI') AS created_at,
 			to_char(app.updated_at, 'YYYY-MM-DD HH24:MI') AS updated_at,
@@ -78,6 +80,12 @@ func (handler *AppHandler) All(ctx echo.Context) error {
 			Joins("LEFT JOIN page ON page.app_category_id = app_category.id").
 			Group("app.id, app_category.id").
 			Order("app.id DESC")
+
+		if categoryFilter != "" {
+			tx = tx.Where("app_category.name LIKE ?", "%"+categoryFilter+"%")
+		}
+
+		return tx
 	}
 
 	data, err := handler.service.All(req.Context(), req.NewPaginate(), filter)
@@ -95,6 +103,7 @@ func (handler *AppHandler) All(ctx echo.Context) error {
 		"TotalPages":  data.TotalPages,
 		"PageSize":    data.PageSize,
 		"Total":       data.Total,
+		"Search":      categoryFilter,
 	})
 }
 func (handler *AppHandler) Show(ctx echo.Context) error {
