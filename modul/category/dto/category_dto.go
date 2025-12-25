@@ -1,9 +1,6 @@
 package category_dto
 
 import (
-	"ijro-nazorat/helper"
-	category_model "ijro-nazorat/modul/category/model"
-
 	"git.sriss.uz/shared/shared_service/response"
 )
 
@@ -22,21 +19,10 @@ type Filter struct {
 }
 
 type Response struct {
-	ID        int    `json:"id"`
+	ID        int64  `json:"id"`
 	Name      string `json:"name"`
 	IsActive  bool   `json:"is_active"`
 	CreatedAt string `json:"created_at"`
 	UpdatedAt string `json:"updated_at"`
 	DeletedAt string `json:"deleted_at"`
-}
-
-func ToResponse(category category_model.Category) Response {
-	return Response{
-		ID:        category.ID,
-		Name:      category.Name,
-		IsActive:  category.IsActive,
-		CreatedAt: helper.FormatDate(category.CreatedAt),
-		UpdatedAt: helper.FormatDate(category.UpdatedAt),
-		DeletedAt: helper.FormatDate(category.DeletedAt),
-	}
 }

@@ -1,32 +1,31 @@
-package country_handler
+package shop_handler
 
 import (
-	"fmt"
-	country_dto "ijro-nazorat/modul/country/dto"
-	country_service "ijro-nazorat/modul/country/service"
+	"ijro-nazorat/helper"
+	shop_dto "ijro-nazorat/modul/shop/dto"
+	shop_service "ijro-nazorat/modul/shop/service"
 	"log"
 	"net/http"
 	"strconv"
-	"strings"
 
+	"git.sriss.uz/shared/shared_service/request"
 	"github.com/labstack/echo/v4"
 	"gorm.io/gorm"
 )
 
-type contryHandler struct {
+type shopHandler struct {
 	db      *gorm.DB
 	log     *log.Logger
-	service country_service.CountryService
+	service shop_service.ShopService
 }
 
-func NewContryHandler(gorm *echo.Group, db *gorm.DB, log *log.Logger) contryHandler {
-	handler := contryHandler{
+func NewShopHandler(gorm *echo.Group, db *gorm.DB, log *log.Logger) shopHandler {
+	handler := shopHandler{
 		db:      db,
 		log:     log,
-		service: country_service.NewCountryService(db),
+		service: shop_service.NewShopService(db),
 	}
-
-	routes := gorm.Group("/country")
+	routes := gorm.Group("/shop")
 	{
 		routes.GET("", handler.All)
 		routes.GET("/:id", handler.Show)
@@ -40,42 +39,14 @@ func NewContryHandler(gorm *echo.Group, db *gorm.DB, log *log.Logger) contryHand
 	return handler
 }
 
-func (handler *contryHandler) All(ctx echo.Context) error {
-	var query country_dto.Filter
-	{
-		if err := ctx.Bind(&query); err != nil {
-			return err
-		}
-	}
+func (handler *shopHandler) All(ctx echo.Context) error {
+	req := request.Request(ctx)
 
 	filter := func(tx *gorm.DB) *gorm.DB {
-
-		switch query.Status {
-		case "open":
-			tx = tx.Where("deleted_at IS NULL")
-		case "deleted":
-			tx = tx.Unscoped().Where("deleted_at IS NOT NULL")
-		default:
-			tx = tx.Unscoped()
-		}
-
-		if query.Name != "" {
-			name := "%" + strings.ToLower(query.Name) + "%"
-			tx = tx.Where("LOWER(countries.name) LIKE ?", name)
-		}
-
-		sortColumn := "countries.created_at ASC"
-
-		if query.Column != "" && query.Sort != "" {
-			sortColumn = fmt.Sprintf("countries.%s %s", query.Column, query.Sort)
-		}
-
-		tx = tx.Group("countries.id").Order(sortColumn)
-
 		return tx
 	}
 
-	data, err := handler.service.All(ctx, filter)
+	data, err := handler.service.All(req.Context(), req.NewPaginate(), filter)
 	{
 		if err != nil {
 			return err
@@ -85,10 +56,11 @@ func (handler *contryHandler) All(ctx echo.Context) error {
 	return ctx.JSON(200, data)
 }
 
-func (handler *contryHandler) Show(ctx echo.Context) error {
-	idParam := ctx.Param("id")
+func (handler *shopHandler) Show(ctx echo.Context) error {
+	req := request.Request(ctx)
 
-	parsedID, err := strconv.ParseInt(idParam, 10, 64)
+	idParam := ctx.Param("id")
+	parsedID, err := strconv.ParseUint(idParam, 10, 64)
 	{
 		if err != nil {
 			return ctx.JSON(http.StatusBadRequest, echo.Map{"error": "invalid id"})
@@ -96,13 +68,14 @@ func (handler *contryHandler) Show(ctx echo.Context) error {
 	}
 
 	filter := func(tx *gorm.DB) *gorm.DB {
+
 		if parsedID > 0 {
 			tx = tx.Where("id = ?", parsedID)
 		}
 		return tx
 	}
 
-	data, err := handler.service.Show(ctx, filter)
+	data, err := handler.service.Show(req.Context(), filter)
 	{
 		if err != nil {
 			return ctx.JSON(http.StatusInternalServerError, echo.Map{"error": err.Error()})
@@ -112,13 +85,14 @@ func (handler *contryHandler) Show(ctx echo.Context) error {
 	return ctx.JSON(200, data)
 }
 
-func (handler *contryHandler) Create(ctx echo.Context) error {
-	var req country_dto.CreateOrUpdate
+func (handler *shopHandler) Create(ctx echo.Context) error {
+	var req shop_dto.ShopChange
 	{
 		if err := ctx.Bind(&req); err != nil {
 			return ctx.JSON(http.StatusBadRequest, echo.Map{"error": err.Error()})
 		}
 	}
+	req.Slug = helper.Slug(req.Name)
 
 	data, err := handler.service.Create(ctx, req)
 	{
@@ -130,20 +104,19 @@ func (handler *contryHandler) Create(ctx echo.Context) error {
 	return ctx.JSON(200, data)
 }
 
-func (handler *contryHandler) Update(ctx echo.Context) error {
-	idParam := ctx.Param("id")
-
-	parsedID, err := strconv.ParseInt(idParam, 10, 64)
-	{
-		if err != nil {
-			return ctx.JSON(http.StatusBadRequest, echo.Map{"error": "invalid id"})
-		}
-	}
-
-	var req country_dto.CreateOrUpdate
+func (handler *shopHandler) Update(ctx echo.Context) error {
+	var req shop_dto.ShopChange
 	{
 		if err := ctx.Bind(&req); err != nil {
 			return ctx.JSON(http.StatusBadRequest, echo.Map{"error": err.Error()})
+		}
+	}
+
+	idParam := ctx.Param("id")
+	parsedID, err := strconv.ParseUint(idParam, 10, 64)
+	{
+		if err != nil {
+			return ctx.JSON(http.StatusBadRequest, echo.Map{"error": "invalid id"})
 		}
 	}
 
@@ -161,13 +134,12 @@ func (handler *contryHandler) Update(ctx echo.Context) error {
 		}
 	}
 
-	return ctx.JSON(200, data)
+	return ctx.JSON(http.StatusOK, data)
 }
 
-func (handler *contryHandler) Delete(ctx echo.Context) error {
+func (handler *shopHandler) Delete(ctx echo.Context) error {
 	idParam := ctx.Param("id")
-
-	parsedID, err := strconv.ParseInt(idParam, 10, 64)
+	parsedID, err := strconv.ParseUint(idParam, 10, 64)
 	{
 		if err != nil {
 			return ctx.JSON(http.StatusBadRequest, echo.Map{"error": "invalid id"})
@@ -175,6 +147,7 @@ func (handler *contryHandler) Delete(ctx echo.Context) error {
 	}
 
 	filter := func(tx *gorm.DB) *gorm.DB {
+
 		if parsedID > 0 {
 			tx = tx.Where("id = ?", parsedID)
 		}
@@ -191,10 +164,10 @@ func (handler *contryHandler) Delete(ctx echo.Context) error {
 	return ctx.JSON(200, echo.Map{"message": "success delete data"})
 }
 
-func (handler *contryHandler) Restore(ctx echo.Context) error {
+func (handler *shopHandler) Restore(ctx echo.Context) error {
+	req := request.Request(ctx)
 	idParam := ctx.Param("id")
-
-	parsedID, err := strconv.ParseInt(idParam, 10, 64)
+	parsedID, err := strconv.ParseUint(idParam, 10, 64)
 	{
 		if err != nil {
 			return ctx.JSON(http.StatusBadRequest, echo.Map{"error": "invalid id"})
@@ -202,13 +175,14 @@ func (handler *contryHandler) Restore(ctx echo.Context) error {
 	}
 
 	filter := func(tx *gorm.DB) *gorm.DB {
+
 		if parsedID > 0 {
 			tx = tx.Where("id = ?", parsedID)
 		}
 		return tx
 	}
 
-	data, err := handler.service.Restore(ctx, filter)
+	data, err := handler.service.Restore(req.Context(), filter)
 	{
 		if err != nil {
 			return ctx.JSON(http.StatusInternalServerError, echo.Map{"error": err.Error()})
@@ -218,11 +192,9 @@ func (handler *contryHandler) Restore(ctx echo.Context) error {
 	return ctx.JSON(200, data)
 }
 
-func (handler *contryHandler) ForceDelete(ctx echo.Context) error {
-
+func (handler *shopHandler) ForceDelete(ctx echo.Context) error {
 	idParam := ctx.Param("id")
-
-	parsedID, err := strconv.ParseInt(idParam, 10, 64)
+	parsedID, err := strconv.ParseUint(idParam, 10, 64)
 	{
 		if err != nil {
 			return ctx.JSON(http.StatusBadRequest, echo.Map{"error": "invalid id"})
@@ -230,6 +202,7 @@ func (handler *contryHandler) ForceDelete(ctx echo.Context) error {
 	}
 
 	filter := func(tx *gorm.DB) *gorm.DB {
+
 		if parsedID > 0 {
 			tx = tx.Where("id = ?", parsedID)
 		}
@@ -244,17 +217,4 @@ func (handler *contryHandler) ForceDelete(ctx echo.Context) error {
 	}
 
 	return ctx.JSON(200, echo.Map{"message": "success delete data"})
-}
-
-func GetID(ctx echo.Context) (int64, error) {
-	idParam := ctx.Param("id")
-
-	parsedID, err := strconv.ParseInt(idParam, 10, 64)
-	{
-		if err != nil {
-			return 0, ctx.JSON(http.StatusBadRequest, echo.Map{"error": "invalid id"})
-		}
-	}
-
-	return parsedID, nil
 }

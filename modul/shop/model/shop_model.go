@@ -1,4 +1,4 @@
-package country_model
+package shop_model
 
 import (
 	"time"
@@ -6,15 +6,16 @@ import (
 	"gorm.io/gorm"
 )
 
-type Country struct {
-	ID        int            `json:"id"`
+type Shop struct {
+	ID        int64          `json:"id"`
 	Name      string         `json:"name"`
+	Slug      string         `json:"slug"`
 	IsActive  bool           `json:"is_active"`
 	CreatedAt time.Time      `json:"created_at"`
 	UpdatedAt time.Time      `json:"updated_at"`
-	DeletedAt gorm.DeletedAt `json:"deleted_at" gorm:"index"`
+	DeletedAt gorm.DeletedAt `gorm:"index"`
 }
 
-func (Country) TableName() string {
-	return "countries"
+func (Shop) TableName() string {
+	return "shops"
 }

@@ -13,8 +13,6 @@ import (
 
 type CategoryService interface {
 	All(ctx context.Context, paginate *request.Paginate, filter pg.Filter) (*category_dto.CategoryPage, error)
-
-	// All(ctx echo.Context, filter func(tx *gorm.DB) *gorm.DB) (helper.PaginatedResponse[category_dto.Response], error)
 	Show(ctx context.Context, filter pg.Filter) (*category_dto.Response, error)
 	Create(ctx echo.Context, req category_dto.CreateOrUpdate) (category_dto.Response, error)
 	Update(ctx echo.Context, filter func(tx *gorm.DB) *gorm.DB, category category_dto.CreateOrUpdate) (category_dto.Response, error)
@@ -30,29 +28,6 @@ type categoryService struct {
 func NewCategoryService(db *gorm.DB) CategoryService {
 	return &categoryService{db: db}
 }
-
-// func (service *categoryService) All(ctx echo.Context, filter func(tx *gorm.DB) *gorm.DB) (helper.PaginatedResponse[category_dto.Response], error) {
-// 	var models []category_model.Category
-
-// 	res, err := helper.Paginate(ctx, service.db.Scopes(filter), &models, 10)
-// 	{
-// 		if err != nil {
-// 			return helper.PaginatedResponse[category_dto.Response]{}, err
-// 		}
-// 	}
-
-// 	var data []category_dto.Response
-// 	{
-// 		for _, model := range models {
-// 			data = append(data, category_dto.ToResponse(model))
-// 		}
-// 	}
-
-// 	return helper.PaginatedResponse[category_dto.Response]{
-// 		Data: data,
-// 		Meta: res.Meta,
-// 	}, nil
-// }
 
 func (service *categoryService) All(ctx context.Context, paginate *request.Paginate, filter pg.Filter) (*category_dto.CategoryPage, error) {
 	return pg.PageWithScan[category_model.Category, category_dto.Response](service.db, paginate, filter)
@@ -76,7 +51,17 @@ func (service *categoryService) Create(ctx echo.Context, req category_dto.Create
 	if err := service.db.Create(&model).Error; err != nil {
 		return category_dto.Response{}, err
 	}
-	return category_dto.ToResponse(model), nil
+
+	res := category_dto.Response{
+		ID:        model.ID,
+		Name:      model.Name,
+		IsActive:  model.IsActive,
+		CreatedAt: model.Name,
+		UpdatedAt: model.Name,
+		DeletedAt: model.Name,
+	}
+
+	return res, nil
 }
 
 func (service *categoryService) Update(ctx echo.Context, filter func(tx *gorm.DB) *gorm.DB, category category_dto.CreateOrUpdate) (category_dto.Response, error) {
@@ -95,9 +80,17 @@ func (service *categoryService) Update(ctx echo.Context, filter func(tx *gorm.DB
 		}
 	}
 
-	res := category_dto.ToResponse(model)
+	res := category_dto.Response{
+		ID:        model.ID,
+		Name:      model.Name,
+		IsActive:  model.IsActive,
+		CreatedAt: model.Name,
+		UpdatedAt: model.Name,
+		DeletedAt: model.Name,
+	}
 
 	return res, nil
+
 }
 
 func (service *categoryService) Delete(ctx echo.Context, filter func(tx *gorm.DB) *gorm.DB) error {
